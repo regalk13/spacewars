@@ -24,6 +24,8 @@
             eza
             fd
             rust-bin.nightly.latest.default
+	    udev alsa-lib vulkan-loader
+	    xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
           ];
 
           shellHook = ''
