@@ -24,13 +24,21 @@
             eza
             fd
             rust-bin.nightly.latest.default
-	    udev alsa-lib vulkan-loader
-	    xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
+            udev alsa-lib vulkan-loader
+            xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
+            vulkan-tools vulkan-headers vulkan-loader vulkan-validation-layers
+            libxkbcommon
           ];
 
           shellHook = ''
             alias ls=eza
             alias find=fd
+            export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath [
+              pkgs.alsaLib
+              pkgs.udev
+              pkgs.vulkan-loader
+              pkgs.libxkbcommon
+            ]}"
           '';
         };
       }
