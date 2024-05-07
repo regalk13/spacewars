@@ -28,6 +28,7 @@
             xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
             vulkan-tools vulkan-headers vulkan-loader vulkan-validation-layers
             libxkbcommon
+	    rust-analyzer
           ];
 
           shellHook = ''
