@@ -26,9 +26,10 @@
             rust-bin.nightly.latest.default
             udev alsa-lib vulkan-loader
             xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr
+            wayland.dev
             vulkan-tools vulkan-headers vulkan-loader vulkan-validation-layers
             libxkbcommon
-	    rust-analyzer
+	          rust-analyzer
           ];
 
           shellHook = ''
