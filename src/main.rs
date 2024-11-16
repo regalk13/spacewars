@@ -1,77 +1,66 @@
 use bevy::{
-    pbr::{MaterialPipeline, MaterialPipelineKey},
     prelude::*,
     reflect::TypePath,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle, Material2d},
-    render::{
-        mesh::MeshVertexBufferLayoutRef,
-        render_resource::{
-            AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError,
-        },
+    render::render_resource::{
+            AsBindGroup, ShaderRef, 
     },
-    color::palettes::basic::PURPLE
+        sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
 };
 
-/* custom material */
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct MovingPatternMaterial {
     #[uniform(0)]
     color: LinearRgba,
     #[uniform(1)]
-    u_time: f32, // Pass time to the shader
-    #[uniform(2)]
-    u_resolution: Vec2, // Pass screen resolution to the shader
+    time: f32,
 }
 
-
-impl Material for MovingPatternMaterial {
-    fn vertex_shader() -> ShaderRef {
-        "shaders/stars_materia.vert".into()
-    }
-
+impl Material2d for MovingPatternMaterial {
     fn fragment_shader() -> ShaderRef {
-        "shaders/stars_materia.frag".into()
+        "shaders/stars_material.wgsl".into()
     }
 
-
-    fn specialize(
-        _pipeline: &MaterialPipeline<Self>,
-        descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
-        _key: MaterialPipelineKey<Self>,
-    ) -> Result<(), SpecializedMeshPipelineError> {
-        descriptor.vertex.entry_point = "main".into();
-        descriptor.fragment.as_mut().unwrap().entry_point = "main".into();
-        Ok(())
-    }
 }
-
-
-
-const SHADER_ASSET_PATH: &str = "shaders/custom_stars.wgsl";
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins,  Material2dPlugin::<MovingPatternMaterial>::default()))
         .add_systems(Startup, setup)
+        .add_systems(Update, update_position)
         .run();
 }
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    window: Query<&Window>
+    mut materials: ResMut<Assets<MovingPatternMaterial>>,
+    window: Query<&Window>,
 ) {
     let window = window.single();
+    let resolution = Vec2::new(window.width(), window.height());
+
     commands.spawn(Camera2dBundle::default());
     commands.spawn(MaterialMesh2dBundle {
-        // mesh: meshes.add(Rectangle::default()).into(),
-        mesh: meshes.add(Rectangle::from_size(Vec2::new(window.width(), window.height()))).into(),
-        // transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        transform: Transform::default().with_scale(Vec3::splat(128.)),
-        material: materials.add(Color::from(PURPLE)),
+        mesh: meshes.add(Mesh::from(Rectangle::from_size(resolution))).into(),
+        material: materials.add(MovingPatternMaterial {
+            color: LinearRgba::WHITE,
+            time: 0.0
+        }),
         ..default()
     });
 }
 
+fn update_position(
+    mut materials: ResMut<Assets<MovingPatternMaterial>>,
+    time: Res<Time>,
+    query: Query<&Handle<MovingPatternMaterial>>,
+) {
+  for handle in query.iter() {
+        // Access the material using the handle
+        if let Some(material) = materials.get_mut(handle) {
+            // Update the `time` field
+            material.time = time.elapsed_seconds() as f32;
+            println!("${}", material.time)
+        }
+    }
+}
