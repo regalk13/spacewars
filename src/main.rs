@@ -1,6 +1,10 @@
 use bevy::{
     prelude::*,
     reflect::TypePath,
+      core_pipeline::{
+        bloom::BloomSettings,
+        tonemapping::Tonemapping,
+    },
     render::render_resource::{
             AsBindGroup, ShaderRef, 
     },
@@ -25,9 +29,24 @@ impl Material2d for MovingPatternMaterial {
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins,  Material2dPlugin::<MovingPatternMaterial>::default()))
-        .add_systems(Startup, setup)
+        .add_systems(Startup, (setup, add_sun))
         .add_systems(Update, update_position)
         .run();
+}
+
+fn add_sun(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials:  ResMut<Assets<ColorMaterial>>,
+) {
+
+    commands.spawn(MaterialMesh2dBundle {
+        mesh: meshes.add(Mesh::from(Circle::new(50.0))).into(),
+        material: materials.add(Color::srgb(7.0, 7.0, 0.0)),
+        transform: Transform::from_xyz(0.0, 0.0, 3.0),
+        ..default()
+    });
+
 }
 
 fn setup(
@@ -39,7 +58,17 @@ fn setup(
     let window = window.single();
     let resolution = Vec2::new(window.width(), window.height());
 
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((
+        Camera2dBundle {
+            camera: Camera {
+                hdr: true,
+                ..default()
+            },
+            tonemapping: Tonemapping::TonyMcMapface, 
+            ..default()
+        },
+        BloomSettings::default(),
+    ));
     commands.spawn(MaterialMesh2dBundle {
         mesh: meshes.add(Mesh::from(Rectangle::from_size(resolution))).into(),
         material: materials.add(MovingPatternMaterial {
