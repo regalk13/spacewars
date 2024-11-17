@@ -214,14 +214,12 @@ fn rocket_movement(
             }
         }
         
-
+        transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
 
         let direction = transform.rotation * Vec3::Y; 
         rocket.velocity = Vec2::new(direction.x, direction.y) * rocket.speed;
 
         transform.translation += rocket.velocity.extend(0.0) * time.delta_seconds();
-        println!("{}", rocket.velocity);
-        transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
     }
     
     if let Some((mut rocket, mut transform)) = query.iter_mut().skip(1).next() {
@@ -258,10 +256,11 @@ fn rocket_movement(
                 rocket.speed -= 2.0 * time.delta_seconds();
             }
         }
+        transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
+
         let direction = transform.rotation * Vec3::Y; 
         rocket.velocity = Vec2::new(direction.x, direction.y) * rocket.speed;
 
         transform.translation += rocket.velocity.extend(0.0) * time.delta_seconds();
-        transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
     }
 }
