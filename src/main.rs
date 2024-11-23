@@ -1,5 +1,12 @@
 use bevy::{
-    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping}, ecs::query, prelude::*, reflect::TypePath, render::render_resource::{AsBindGroup, ShaderRef}, sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle}, transform, window::WindowMode
+    core_pipeline::{bloom::BloomSettings, tonemapping::Tonemapping},
+    ecs::query,
+    prelude::*,
+    reflect::TypePath,
+    render::render_resource::{AsBindGroup, ShaderRef},
+    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
+    transform,
+    window::WindowMode,
 };
 
 // Rocket component
@@ -9,7 +16,7 @@ struct Rocket {
     max_speed: f32,
     velocity: Vec2,
     rotation_speed: f32,
-    controls: RocketControls
+    controls: RocketControls,
 }
 
 struct RocketControls {
@@ -19,9 +26,7 @@ struct RocketControls {
 }
 
 #[derive(Component)]
-struct Sun {
-
-}
+struct Sun {}
 
 // Projectile component
 #[derive(Component)]
@@ -58,7 +63,15 @@ fn main() {
             Material2dPlugin::<MovingPatternMaterial>::default(),
         ))
         .add_systems(Startup, (setup, add_sun, add_rockets).chain())
-        .add_systems(Update, (update_rocket_status, gravitational_pull, check_collision, clip_rockets))
+        .add_systems(
+            Update,
+            (
+                update_rocket_status,
+                gravitational_pull,
+                check_collision,
+                clip_rockets,
+            ),
+        )
         .run();
 }
 
@@ -67,7 +80,6 @@ fn add_sun(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-  
     commands.spawn((
         MaterialMesh2dBundle {
             mesh: meshes.add(Mesh::from(Circle::new(50.0))).into(),
@@ -116,8 +128,8 @@ fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
             controls: RocketControls {
                 rotate_left: KeyCode::KeyA,
                 rotate_right: KeyCode::KeyD,
-                accelerate: KeyCode::KeyS
-            }
+                accelerate: KeyCode::KeyS,
+            },
         },
     ));
     commands.spawn((
@@ -134,8 +146,8 @@ fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
             controls: RocketControls {
                 rotate_left: KeyCode::KeyJ,
                 rotate_right: KeyCode::KeyL,
-                accelerate: KeyCode::KeyK
-            }
+                accelerate: KeyCode::KeyK,
+            },
         },
     ));
 }
@@ -178,7 +190,6 @@ fn handle_rocket_movement(
     rocket: &mut Rocket,
     transform: &mut Transform,
 ) {
-
     if keys.pressed(rocket.controls.accelerate) {
         if rocket.speed < rocket.max_speed {
             rocket.speed += 50.0 * time.delta_seconds();
@@ -188,7 +199,6 @@ fn handle_rocket_movement(
             rocket.speed -= 50.0 * time.delta_seconds();
         }
     }
-
 
     let mut rotation_input = 0.0;
     if keys.pressed(rocket.controls.rotate_left) {
@@ -201,7 +211,9 @@ fn handle_rocket_movement(
     let max_rotation_speed = f32::to_radians(70.0);
     let rotation_acceleration = f32::to_radians(50.0 * time.delta_seconds());
     rocket.rotation_speed += rotation_input * rotation_acceleration;
-    rocket.rotation_speed = rocket.rotation_speed.clamp(-max_rotation_speed, max_rotation_speed);
+    rocket.rotation_speed = rocket
+        .rotation_speed
+        .clamp(-max_rotation_speed, max_rotation_speed);
 
     transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
 
@@ -216,16 +228,14 @@ fn handle_rocket_movement(
 
     transform.translation += rocket.velocity.extend(0.0) * time.delta_seconds();
 
-  //  println!("{:?}", rocket.rotation_speed);
-   // println!("{:?}", transform.rotation);
-
+    //  println!("{:?}", rocket.rotation_speed);
+    // println!("{:?}", transform.rotation);
 }
-
 
 fn update_rocket_status(
     keys: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Rocket, &mut Transform)>,
-    time: Res<Time>
+    time: Res<Time>,
 ) {
     for (_, (mut rocket, mut transform)) in query.iter_mut().enumerate() {
         handle_rocket_movement(&time, &keys, &mut rocket, &mut transform);
@@ -248,9 +258,7 @@ fn are_rockets_colliding(transform_a: &Transform, transform_b: &Transform) -> bo
     !(a_max.x < b_min.x || a_min.x > b_max.x || a_max.y < b_min.y || a_min.y > b_max.y)
 }
 
-fn check_collision(
-    mut query: Query<(&mut Rocket, &Transform)>,
-) {
+fn check_collision(mut query: Query<(&mut Rocket, &Transform)>) {
     let rockets: Vec<(Mut<Rocket>, &Transform)> = query.iter_mut().collect();
 
     for i in 0..rockets.len() {
@@ -259,52 +267,52 @@ fn check_collision(
             let (_, transform_b) = &rockets[j];
 
             if are_rockets_colliding(transform_a, transform_b) {
-               // println!("Collide!");
+                // println!("Collide!");
             }
         }
     }
 }
 
-fn clip_rockets(
-    mut query: Query<&mut Transform>,
-) {
+fn clip_rockets(mut query: Query<&mut Transform>) {
     let mut pos: Vec<Mut<Transform>> = query.iter_mut().collect();
 
     for i in 0..pos.len() {
         let transform = &mut pos[i];
         if transform.translation[0] < -670.0 || transform.translation[0] > 670.0 {
-            transform.translation = Vec3::new(-transform.translation[0], transform.translation[1], transform.translation[2]);
+            transform.translation = Vec3::new(
+                -transform.translation[0],
+                transform.translation[1],
+                transform.translation[2],
+            );
         }
         if transform.translation[1] < -380.0 || transform.translation[1] > 380.0 {
-            transform.translation = Vec3::new(transform.translation[0], -transform.translation[1], transform.translation[2]);
+            transform.translation = Vec3::new(
+                transform.translation[0],
+                -transform.translation[1],
+                transform.translation[2],
+            );
         }
     }
 }
 
-fn gravitational_pull(
-    mut rocket_query: Query<(&mut Rocket, &mut Transform)>,
-    time: Res<Time>,
-) {
+fn gravitational_pull(mut rocket_query: Query<(&mut Rocket, &mut Transform)>, time: Res<Time>) {
     let sun_position = Vec2::ZERO;
     let gravitational_constant = 120000000.0;
 
     for (mut rocket, mut transform) in rocket_query.iter_mut() {
-        let rocket_position = Vec2::new(
-            transform.translation.x,
-            transform.translation.y,
-        );
-        
+        let rocket_position = Vec2::new(transform.translation.x, transform.translation.y);
+
         let direction = sun_position - rocket_position;
         let distance = direction.length();
-        
+
         if distance < 70.0 {
             continue;
         }
 
         let force = gravitational_constant / (distance * distance);
-        
+
         let acceleration = direction.normalize() * force;
-        
+
         rocket.velocity += acceleration * time.delta_seconds();
 
         if rocket.velocity.length() > rocket.max_speed {
@@ -312,6 +320,5 @@ fn gravitational_pull(
         }
         transform.translation.x += rocket.velocity.x * time.delta_seconds();
         transform.translation.y += rocket.velocity.y * time.delta_seconds();
-
     }
 }
