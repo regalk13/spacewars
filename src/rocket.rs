@@ -21,7 +21,6 @@ const H_CLIP: f32 = 380.;
 const SPAWN_X: f32 = 400.;
 const SPAWN_Y: f32 = 200.;
 
-
 pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rocket_image = asset_server.load("Rocket1-v2.png");
     let rocket_image_b = asset_server.load("Rocket1-v3.png");
@@ -53,7 +52,7 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         Rocket {
             speed: 0.0,
-            max_speed: 200.0,
+            max_speed: 150.0,
             velocity: Vec2::ZERO,
             rotation_speed: f32::to_radians(0.0),
             controls: RocketControls {
@@ -71,7 +70,7 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         Rocket {
             speed: 0.0,
-            max_speed: 200.0,
+            max_speed: 150.0,
             velocity: Vec2::ZERO,
             rotation_speed: f32::to_radians(0.0),
             controls: RocketControls {

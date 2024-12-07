@@ -1,14 +1,10 @@
 use bevy::{
-    prelude::*,
-    window::WindowMode,
-    sprite::{Material2dPlugin, Material2d, MaterialMesh2dBundle},
-    render::render_resource::*,
+    ecs::entity, prelude::*, render::render_resource::*, sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle}, window::WindowMode
 };
 
 mod post_process;
 mod rocket;
-use rocket::{Rocket, add_rockets, clip_rockets};
-
+use rocket::{add_rockets, clip_rockets, Rocket};
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct MovingPatternMaterial {
@@ -26,26 +22,51 @@ impl Material2d for MovingPatternMaterial {
 
 fn main() {
     App::new()
-        .add_plugins((  DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "SpaceWars".into(),
-                name: Some("bevy.app".into()),
-                resolution: (980., 735.).into(),
-                mode: WindowMode::Windowed,
-                resizable: false,
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "SpaceWars".into(),
+                    name: Some("bevy.app".into()),
+                    resolution: (980., 735.).into(),
+                    mode: WindowMode::Windowed,
+                    resizable: false,
+                    ..default()
+                }),
                 ..default()
             }),
-            ..default()
-        }), post_process::PostProcessPlugin, Material2dPlugin::<MovingPatternMaterial>::default(),))
-        .add_systems(Startup, (setup, add_background, add_sun, add_rockets).chain())
-        .add_systems(Update, (post_process::rotate, post_process::update_settings, update_rocket_status, clip_rockets).chain())
+            post_process::PostProcessPlugin,
+            Material2dPlugin::<MovingPatternMaterial>::default(),
+        ))
+        .add_systems(
+            Startup,
+            (setup, add_background, add_sun, add_rockets).chain(),
+        )
+        .add_systems(
+            Update,
+            (
+                update_rocket_status,
+                clip_rockets,
+               // gravitational_pull,
+                post_process::rotate,
+                post_process::update_settings,
+            )
+                .chain(),
+        )
         .run();
 }
 
-#[warn(dead_code)]
+fn check_collision(rocket1: &Transform, rocket2: &Transform, radius_collison: f32) -> bool {
+    let distance = rocket1
+        .translation
+        .truncate()
+        .distance(rocket2.translation.truncate());
+    println!("{}", distance);
+    distance < radius_collison
+}
+
 fn gravitational_pull(mut rocket_query: Query<(&mut Rocket, &mut Transform)>, time: Res<Time>) {
     let sun_position = Vec2::ZERO;
-    let gravitational_constant = 120000000.0;
+    const G_FORCE: f64 = 125000000.0;
 
     for (mut rocket, mut transform) in rocket_query.iter_mut() {
         let rocket_position = Vec2::new(transform.translation.x, transform.translation.y);
@@ -53,13 +74,13 @@ fn gravitational_pull(mut rocket_query: Query<(&mut Rocket, &mut Transform)>, ti
         let direction = sun_position - rocket_position;
         let distance = direction.length();
 
-        if distance < 70.0 {
+        if distance < 65.0 {
             continue;
         }
 
-        let force = gravitational_constant / (distance * distance);
+        let force = G_FORCE / (distance * distance) as f64;
 
-        let acceleration = direction.normalize() * force;
+        let acceleration = direction.normalize() * force as f32;
 
         rocket.velocity += acceleration * time.delta_seconds();
 
@@ -70,7 +91,6 @@ fn gravitational_pull(mut rocket_query: Query<(&mut Rocket, &mut Transform)>, ti
         transform.translation.y += rocket.velocity.y * time.delta_seconds();
     }
 }
-
 
 fn add_background(
     mut commands: Commands,
@@ -93,15 +113,11 @@ fn add_background(
 }
 
 /// Set up a simple 3D scene
-fn setup(
-    mut commands: Commands,
-) {
+fn setup(mut commands: Commands) {
     // camera
     commands.spawn((
         Camera2dBundle {
-            camera: Camera {
-                ..default()
-            },
+            camera: Camera { ..default() },
             ..default()
         },
         post_process::PostProcessSettings {
@@ -122,7 +138,6 @@ fn setup(
 
 #[derive(Component)]
 struct Sun {}
-
 
 fn add_sun(
     mut commands: Commands,
@@ -157,11 +172,13 @@ fn handle_rocket_movement(
     }
 
     let mut rotation_input = 0.0;
+
     if keys.pressed(rocket.controls.rotate_left) {
-        rotation_input += 1.0;
+        rotation_input += 4.0;
     }
+
     if keys.pressed(rocket.controls.rotate_right) {
-        rotation_input -= 1.0;
+        rotation_input -= 4.0;
     }
 
     let max_rotation_speed = f32::to_radians(70.0);
@@ -173,12 +190,6 @@ fn handle_rocket_movement(
 
     transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
 
-    if keys.pressed(rocket.controls.rotate_right) && keys.pressed(rocket.controls.rotate_left) {
-        rocket.rotation_speed = 0.0
-    }
-
-    transform.rotation *= Quat::from_rotation_z(rocket.rotation_speed * time.delta_seconds());
-
     let direction = transform.rotation * Vec3::Y;
     rocket.velocity = Vec2::new(direction.x, direction.y) * rocket.speed;
 
@@ -186,11 +197,28 @@ fn handle_rocket_movement(
 }
 
 fn update_rocket_status(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Rocket, &mut Transform)>,
+    mut entities: Query<(Entity, &mut Rocket, &mut Transform)>,
     time: Res<Time>,
 ) {
-    for (_, (mut rocket, mut transform)) in query.iter_mut().enumerate() {
+    let rockets: Vec<(_, Mut<'_, Rocket>, Mut<'_, Transform>)> = entities.iter_mut().collect();
+
+    if rockets.len() > 0 {
+        let (_, _, transform1) = &rockets[0];
+        let (_, _, transform2) = &rockets[1];
+    
+        let radius_collison = 50.0;
+    
+        if check_collision(transform1, transform2, radius_collison) {
+            for (entity, _, _) in entities.iter() {
+                commands.entity(entity).despawn();
+            }
+        }
+    
+    }
+
+    for (_, (_, mut rocket, mut transform)) in entities.iter_mut().enumerate() {
         handle_rocket_movement(&time, &keys, &mut rocket, &mut transform);
     }
 }
