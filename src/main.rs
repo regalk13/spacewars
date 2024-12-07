@@ -1,5 +1,8 @@
 use bevy::{
-    ecs::entity, prelude::*, render::render_resource::*, sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle}, window::WindowMode
+    prelude::*,
+    render::render_resource::*,
+    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
+    window::WindowMode,
 };
 
 mod post_process;
@@ -46,7 +49,7 @@ fn main() {
             (
                 update_rocket_status,
                 clip_rockets,
-               // gravitational_pull,
+                gravitational_pull,
                 post_process::rotate,
                 post_process::update_settings,
             )
@@ -62,6 +65,14 @@ fn check_collision(rocket1: &Transform, rocket2: &Transform, radius_collison: f3
         .distance(rocket2.translation.truncate());
     println!("{}", distance);
     distance < radius_collison
+}
+
+fn check_sun_collision(rocket: &Transform, radius_collision: f32) -> bool {
+    let distance = rocket
+        .translation
+        .truncate()
+        .distance(Vec2::new(0.0, 0.0));
+    distance < radius_collision
 }
 
 fn gravitational_pull(mut rocket_query: Query<(&mut Rocket, &mut Transform)>, time: Res<Time>) {
@@ -112,9 +123,7 @@ fn add_background(
     });
 }
 
-/// Set up a simple 3D scene
 fn setup(mut commands: Commands) {
-    // camera
     commands.spawn((
         Camera2dBundle {
             camera: Camera { ..default() },
@@ -126,7 +135,6 @@ fn setup(mut commands: Commands) {
         },
     ));
 
-    // light
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             illuminance: 1_000.,
@@ -202,23 +210,32 @@ fn update_rocket_status(
     mut entities: Query<(Entity, &mut Rocket, &mut Transform)>,
     time: Res<Time>,
 ) {
-    let rockets: Vec<(_, Mut<'_, Rocket>, Mut<'_, Transform>)> = entities.iter_mut().collect();
+    let rockets: Vec<(Entity, Mut<'_, Rocket>, Mut<'_, Transform>)> = entities.iter_mut().collect();
 
-    if rockets.len() > 0 {
-        let (_, _, transform1) = &rockets[0];
-        let (_, _, transform2) = &rockets[1];
-    
+    if rockets.len() > 1 {
+        let (entity, _, transform1) = &rockets[0];
+        let (entity2, _, transform2) = &rockets[1];
+
         let radius_collison = 50.0;
-    
-        if check_collision(transform1, transform2, radius_collison) {
+       
+        // rocket1
+        if check_sun_collision(transform1, radius_collison + 30.) {
+            commands.entity(*entity).despawn();
+        }
+
+        // rocket2
+        if check_sun_collision(transform2, radius_collison + 30.) {
+            commands.entity(*entity2).despawn();
+        }
+
+        if check_collision(transform1, transform2, radius_collison + 100.) {
             for (entity, _, _) in entities.iter() {
                 commands.entity(entity).despawn();
             }
         }
-    
     }
 
-    for (_, (_, mut rocket, mut transform)) in entities.iter_mut().enumerate() {
+    for (_, mut rocket, mut transform) in entities.iter_mut() {
         handle_rocket_movement(&time, &keys, &mut rocket, &mut transform);
     }
 }
