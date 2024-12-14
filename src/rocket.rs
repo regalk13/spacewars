@@ -6,6 +6,7 @@ pub struct Rocket {
     pub max_speed: f32,
     pub velocity: Vec2,
     pub rotation_speed: f32,
+    pub radius_collision: f32,
     pub controls: RocketControls,
 }
 
@@ -54,6 +55,7 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
             speed: 0.0,
             max_speed: 150.0,
             velocity: Vec2::ZERO,
+            radius_collision: 50.,
             rotation_speed: f32::to_radians(0.0),
             controls: RocketControls {
                 rotate_left: KeyCode::KeyA,
@@ -71,6 +73,7 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
         Rocket {
             speed: 0.0,
             max_speed: 150.0,
+            radius_collision: 50.,
             velocity: Vec2::ZERO,
             rotation_speed: f32::to_radians(0.0),
             controls: RocketControls {

@@ -7,7 +7,9 @@ use bevy::{
 
 mod post_process;
 mod rocket;
+mod bullet;
 use rocket::{add_rockets, clip_rockets, Rocket};
+use bullet::{check_bullet_coll, spawn_bullet};
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct MovingPatternMaterial {
@@ -47,6 +49,8 @@ fn main() {
         .add_systems(
             Update,
             (
+                check_bullet_coll,
+                spawn_bullet,
                 update_rocket_status,
                 clip_rockets,
                 gravitational_pull,
@@ -213,22 +217,18 @@ fn update_rocket_status(
     let rockets: Vec<(Entity, Mut<'_, Rocket>, Mut<'_, Transform>)> = entities.iter_mut().collect();
 
     if rockets.len() > 1 {
-        let (entity, _, transform1) = &rockets[0];
-        let (entity2, _, transform2) = &rockets[1];
+        let (entity, rocket1, transform1) = &rockets[0];
+        let (entity2, rocket2, transform2) = &rockets[1];
 
-        let radius_collison = 50.0;
-       
-        // rocket1
-        if check_sun_collision(transform1, radius_collison + 30.) {
+        if check_sun_collision(transform1, rocket1.radius_collision + 30.) {
             commands.entity(*entity).despawn();
         }
 
-        // rocket2
-        if check_sun_collision(transform2, radius_collison + 30.) {
+        if check_sun_collision(transform2, rocket2.radius_collision + 30.) {
             commands.entity(*entity2).despawn();
         }
 
-        if check_collision(transform1, transform2, radius_collison + 100.) {
+        if check_collision(transform1, transform2, rocket1.radius_collision + 100.) {
             for (entity, _, _) in entities.iter() {
                 commands.entity(entity).despawn();
             }
