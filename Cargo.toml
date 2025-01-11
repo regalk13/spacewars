@@ -13,3 +13,4 @@ opt-level = 3
 
 [dependencies]
 bevy = { version = "0.14.2", features= ["wayland"]}
+bevy_hanabi = "0.13"

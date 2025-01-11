@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use crate::rocket::Rocket;
+use bevy_hanabi::prelude::*;
 
 #[derive(Component)]
 pub struct Bullet {
@@ -63,9 +64,19 @@ pub fn handle_bullet_movement(
 
 pub fn check_bullet_coll(
     mut commands: Commands,
-    rocket_query: Query<(Entity, &Transform), With<Rocket>>,
-    bullet_query: Query<&Transform, With<Bullet>>
+    rocket_query: Query<(Entity, &Transform), (With<Rocket>, Without<EffectProperties>)>,
+    bullet_query: Query<&Transform, (With<Bullet>, Without<EffectProperties>)>,
+    mut effect: Query<(
+        &mut EffectProperties,
+        &mut EffectInitializers,
+        &mut Transform,
+    )>,
 ) {
+    let Ok((mut properties, mut initializers, mut effect_transform)) = effect.get_single_mut()
+    else {
+        return;
+    };
+
     for (entity, enemy_transform) in rocket_query.iter() {
         for bullet_transform in bullet_query.iter() {            
             let distance = enemy_transform
@@ -74,6 +85,15 @@ pub fn check_bullet_coll(
             .distance(bullet_transform.translation.truncate());
             if distance < 30.
             {
+                effect_transform.translation = enemy_transform.translation;
+
+                let r = 255.;
+                let g = 165.;
+                let b = 0.;
+                let color = 0xFF000000u32 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+                properties.set("spawn_color", color.into());
+                initializers.reset();
+    
                 commands.entity(entity).despawn();
             }
         }

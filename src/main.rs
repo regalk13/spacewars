@@ -1,8 +1,5 @@
 use bevy::{
-    prelude::*,
-    render::render_resource::*,
-    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
-    window::WindowMode,
+    prelude::*, render::render_resource::*, sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle}, window::WindowMode
 };
 mod bullet;
 mod post_process;
@@ -10,7 +7,9 @@ mod rocket;
 use bullet::{check_bullet_coll, handle_bullet_movement, spawn_bullet};
 use rocket::{add_rockets, clip_rockets, Rocket};
 
+use bevy_hanabi::prelude::*;
 
+use std::f32::consts::TAU;
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct MovingPatternMaterial {
@@ -43,6 +42,7 @@ fn main() {
             post_process::PostProcessPlugin,
             Material2dPlugin::<MovingPatternMaterial>::default(),
         ))
+        .add_plugins(HanabiPlugin)
         .add_systems(
             Startup,
             (setup, add_background, add_sun, add_rockets).chain(),
@@ -126,8 +126,7 @@ fn add_background(
     });
 }
 
-
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut effects: ResMut<Assets<EffectAsset>>) {
     commands.spawn((
         Camera2dBundle {
             camera: Camera { ..default() },
@@ -146,6 +145,63 @@ fn setup(mut commands: Commands) {
         },
         ..default()
     });
+
+    let mut gradient = Gradient::new();
+    gradient.add_key(0.0, Vec4::new(0.5, 0.5, 1.0, 1.0));
+    gradient.add_key(1.0, Vec4::new(0.5, 0.5, 1.0, 0.0));
+
+    let writer = ExprWriter::new();
+
+    let age = writer.lit(0.).expr();
+    let init_age = SetAttributeModifier::new(Attribute::AGE, age);
+
+    let lifetime = writer.lit(5.).expr();
+    let init_lifetime = SetAttributeModifier::new(Attribute::LIFETIME, lifetime);
+
+    let init_pos = SetPositionCircleModifier {
+        center: writer.lit(Vec3::ZERO).expr(),
+        axis: writer.lit(Vec3::Z).expr(),
+        radius: writer.lit(TAU).expr(),
+        dimension: ShapeDimension::Surface,
+    };
+
+    let init_vel = SetVelocityCircleModifier {
+        center: writer.lit(Vec3::ZERO).expr(),
+        axis: writer.lit(Vec3::Z).expr(),
+        speed: (writer.lit(200.) * writer.rand(ScalarType::Float)).expr(),
+    };
+    let prop = writer.add_property("spawn_color", 0xFFFFFFFFu32.into());
+    let color = writer.prop(prop).expr();
+    let init_color = SetAttributeModifier::new(Attribute::COLOR, color);
+
+    let drag = writer.lit(2.).expr();
+    let update_drag = LinearDragModifier::new(drag);
+
+    let module = writer.finish();
+
+    let spawner = Spawner::once(100.0.into(), false);
+
+    let effect = effects.add(
+        EffectAsset::new(32768, spawner, module)
+            .with_name("explosion")
+            .init(init_pos)
+            .init(init_vel)
+            .init(init_age)
+            .init(init_lifetime)
+            .init(init_color)
+            .update(update_drag)
+            .render(SetSizeModifier {
+                size: Vec3::splat(3.).into(),
+            }),
+    );
+
+    commands
+        .spawn(ParticleEffectBundle {
+            // Assign the Z layer so it appears in the egui inspector and can be modified at runtime
+            effect: ParticleEffect::new(effect).with_z_layer_2d(Some(0.1)),
+            ..default()
+        })
+        .insert(Name::new("effect:meteor_explosion"));
 }
 
 #[derive(Component)]
@@ -211,10 +267,19 @@ fn handle_rocket_movement(
 fn update_rocket_status(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut entities: Query<(Entity, &mut Rocket, &mut Transform)>,
+    mut entities: Query<(Entity, &mut Rocket, &mut Transform), Without<EffectProperties>>,    
+    mut effect: Query<(
+        &mut EffectProperties,
+        &mut EffectInitializers,
+        &mut Transform,
+    )>,
     time: Res<Time>,
 ) {
     let rockets: Vec<(Entity, Mut<'_, Rocket>, Mut<'_, Transform>)> = entities.iter_mut().collect();
+    let Ok((mut properties, mut initializers, mut effect_transform)) = effect.get_single_mut()
+    else {
+        return;
+    };
 
     if rockets.len() > 1 {
         let (entity, rocket1, transform1) = &rockets[0];
@@ -223,13 +288,48 @@ fn update_rocket_status(
         if check_sun_collision(transform1, rocket1.radius_collision + 30.) {
             commands.entity(*entity).despawn();
             // spawn_particles(commands, meshes, materials, transform1, &time);
+
+            effect_transform.translation = transform1.translation;
+
+            let r = 255.;
+            let g = 165.;
+            let b = 0.;
+            let color = 0xFF000000u32 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+            properties.set("spawn_color", color.into());
+            initializers.reset();
         }
 
         if check_sun_collision(transform2, rocket2.radius_collision + 30.) {
             commands.entity(*entity2).despawn();
+            effect_transform.translation = transform2.translation;
+
+            let r = 255.;
+            let g = 165.;
+            let b = 0.;
+            let color = 0xFF000000u32 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+            properties.set("spawn_color", color.into());
+            initializers.reset();
         }
 
         if check_collision(transform1, transform2, rocket1.radius_collision) {
+            effect_transform.translation = transform1.translation;
+
+            let r = 255.;
+            let g = 165.;
+            let b = 0.;
+            let color = 0xFF000000u32 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+            properties.set("spawn_color", color.into());
+            initializers.reset();
+
+            effect_transform.translation = transform2.translation;
+
+            let r = 255.;
+            let g = 165.;
+            let b = 0.;
+            let color = 0xFF000000u32 | (b as u32) << 16 | (g as u32) << 8 | (r as u32);
+            properties.set("spawn_color", color.into());
+            initializers.reset();
+
             for (entity, _, _) in entities.iter() {
                 commands.entity(entity).despawn();
             }
