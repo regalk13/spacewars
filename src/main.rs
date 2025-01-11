@@ -4,12 +4,13 @@ use bevy::{
     sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
     window::WindowMode,
 };
-
+mod bullet;
 mod post_process;
 mod rocket;
-mod bullet;
+use bullet::{check_bullet_coll, handle_bullet_movement, spawn_bullet};
 use rocket::{add_rockets, clip_rockets, Rocket};
-use bullet::{check_bullet_coll, spawn_bullet};
+
+
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
 pub struct MovingPatternMaterial {
@@ -54,6 +55,7 @@ fn main() {
                 update_rocket_status,
                 clip_rockets,
                 gravitational_pull,
+                handle_bullet_movement,
                 post_process::rotate,
                 post_process::update_settings,
             )
@@ -67,15 +69,12 @@ fn check_collision(rocket1: &Transform, rocket2: &Transform, radius_collison: f3
         .translation
         .truncate()
         .distance(rocket2.translation.truncate());
-    println!("{}", distance);
+    // println!("{}", distance);
     distance < radius_collison
 }
 
 fn check_sun_collision(rocket: &Transform, radius_collision: f32) -> bool {
-    let distance = rocket
-        .translation
-        .truncate()
-        .distance(Vec2::new(0.0, 0.0));
+    let distance = rocket.translation.truncate().distance(Vec2::new(0.0, 0.0));
     distance < radius_collision
 }
 
@@ -126,6 +125,7 @@ fn add_background(
         ..default()
     });
 }
+
 
 fn setup(mut commands: Commands) {
     commands.spawn((
@@ -222,13 +222,14 @@ fn update_rocket_status(
 
         if check_sun_collision(transform1, rocket1.radius_collision + 30.) {
             commands.entity(*entity).despawn();
+            // spawn_particles(commands, meshes, materials, transform1, &time);
         }
 
         if check_sun_collision(transform2, rocket2.radius_collision + 30.) {
             commands.entity(*entity2).despawn();
         }
 
-        if check_collision(transform1, transform2, rocket1.radius_collision + 100.) {
+        if check_collision(transform1, transform2, rocket1.radius_collision) {
             for (entity, _, _) in entities.iter() {
                 commands.entity(entity).despawn();
             }

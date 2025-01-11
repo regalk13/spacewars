@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use std::time::Duration;
 
 #[derive(Component)]
 pub struct Rocket {
@@ -8,6 +9,9 @@ pub struct Rocket {
     pub rotation_speed: f32,
     pub radius_collision: f32,
     pub controls: RocketControls,
+    pub spawn_key: KeyCode,
+    pub cooldown: Duration,
+    pub last_shot_time: Duration,
 }
 
 pub struct RocketControls {
@@ -62,6 +66,9 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
                 rotate_right: KeyCode::KeyD,
                 accelerate: KeyCode::KeyS,
             },
+            spawn_key: KeyCode::KeyW,
+            cooldown: Duration::from_millis(500),
+            last_shot_time: Duration::ZERO,
         },
     ));
     commands.spawn((
@@ -81,11 +88,14 @@ pub fn add_rockets(mut commands: Commands, asset_server: Res<AssetServer>) {
                 rotate_right: KeyCode::KeyL,
                 accelerate: KeyCode::KeyK,
             },
+            spawn_key: KeyCode::KeyI,
+            cooldown: Duration::from_millis(300),
+            last_shot_time: Duration::ZERO
         },
     ));
 }
 
-pub fn clip_rockets(mut query: Query<&mut Transform>) {
+pub fn clip_rockets(mut query: Query<&mut Transform, With<Rocket>>) {
     let mut pos: Vec<Mut<Transform>> = query.iter_mut().collect();
     for i in 0..pos.len() {
         let transform = &mut pos[i];
